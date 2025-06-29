@@ -33,17 +33,20 @@ def fetch_trades():
         max_ts = data.get('max_ts')
         fetch_all = data.get('fetchAll', False)
         
-        # Convert min_ts and max_ts to integers if they exist
-        if min_ts:
-            min_ts = int(min_ts)
-        if max_ts:
-            max_ts = int(max_ts)
-        
         # Set limit to maximum if fetch_all is True
         if fetch_all:
             limit = 1000
+            # Don't use date filters when fetching all data
+            min_ts = None
+            max_ts = None
+        else:
+            # Convert min_ts and max_ts to integers if they exist
+            if min_ts:
+                min_ts = int(min_ts)
+            if max_ts:
+                max_ts = int(max_ts)
         
-        print(f"Fetching trades with params: ticker={ticker}, limit={limit}, min_ts={min_ts}, max_ts={max_ts}")
+        print(f"Fetching trades with params: ticker={ticker}, limit={limit}, min_ts={min_ts}, max_ts={max_ts}, fetch_all={fetch_all}")
         
         # Call the Kalshi API client
         trades = get_all_trades(

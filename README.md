@@ -72,11 +72,12 @@ A web-based application for fetching, analyzing, and visualizing trading data fr
 1. **Enter Parameters**:
 
    - **Ticker**: Market ticker (e.g., `LEAVEPOWELL-25-DEC31`)
-   - **Limit**: Number of trades per page (1-1000)
    - **Date Range**: Optional start/end timestamps
-   - **Fetch All**: Check to get all available data
+   - **Fetch All**: Check to get all available data (ignores date range)
 
 2. **Click "Fetch Data"** to retrieve trading data
+
+**Note**: Pagination is handled automatically by the backend. The system will fetch all available data using efficient cursor-based pagination.
 
 ### Analyzing Data
 
@@ -87,9 +88,38 @@ A web-based application for fetching, analyzing, and visualizing trading data fr
 
 ### Data Management
 
-- **Sort**: Click column headers to sort data
-- **Filter**: Use the search box to filter results
+- **Search**: Use the search box to filter results across all data fields
+- **Sort**: Click any column header to sort by that column
 - **Export**: Download data as CSV file
+
+#### Search Functionality
+
+The search box allows you to quickly filter the displayed data:
+
+- **Global Search**: Searches across ALL fields in the data (ticker, prices, dates, trade IDs, etc.)
+- **Real-time Filtering**: Results update as you type
+- **Case-insensitive**: Searches are not case-sensitive
+- **Partial Matches**: Finds any data containing your search term
+- **Clear Button**: Click the × button to clear your search instantly
+
+**Examples:**
+
+- Type `16` to find trades with price 16
+- Type `yes` to find "yes" trades
+- Type `2025-06-29` to find trades from that date
+- Type `LEAVEPOWELL` to find trades for that ticker
+
+**Clearing Search:**
+
+- Click the **× button** next to the search box
+- **Double-click** the search box
+- **Delete** the text manually
+
+#### Sorting Functionality
+
+- **Click any column header** to sort by that column
+- **Click again** to reverse the sort order (ascending/descending)
+- **Visual feedback** shows which column is currently sorted
 
 ## File Structure
 

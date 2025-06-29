@@ -27,18 +27,6 @@
           </div>
 
           <div class="form-group">
-            <label for="limit">Entries per page (1-1000):</label>
-            <input
-              type="number"
-              id="limit"
-              name="limit"
-              min="1"
-              max="1000"
-              value="100"
-            />
-          </div>
-
-          <div class="form-group">
             <label for="dateFrom">Date From:</label>
             <input type="datetime-local" id="dateFrom" name="dateFrom" />
           </div>
@@ -49,7 +37,7 @@
           </div>
 
           <div class="form-group">
-            <label for="fetchAll">Fetch all data (ignore limit):</label>
+            <label for="fetchAll">Fetch all data (ignore date range):</label>
             <input type="checkbox" id="fetchAll" name="fetchAll" />
           </div>
 
@@ -59,19 +47,27 @@
 
       <div class="controls-section">
         <div class="search-filter">
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Search in any column..."
-          />
-          <select id="sortColumn">
-            <option value="">Sort by...</option>
-            <option value="timestamp">Timestamp</option>
-            <option value="price">Price</option>
-            <option value="quantity">Quantity</option>
-            <option value="side">Side</option>
-          </select>
-          <button id="sortBtn">Sort</button>
+          <div class="search-container">
+            <div class="search-input-group">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search across all data (ticker, price, date, etc.)..."
+              />
+              <button
+                type="button"
+                id="clearSearch"
+                class="clear-btn"
+                title="Clear search"
+              >
+                ×
+              </button>
+            </div>
+            <small class="search-help"
+              >Type to filter results - searches all fields including ticker,
+              prices, dates, and trade IDs</small
+            >
+          </div>
           <button id="exportCsv">Export CSV</button>
           <button id="analyzeBtn">Analyze Data</button>
         </div>

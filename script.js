@@ -22,17 +22,28 @@ class KalshiDataExplorer {
     // Search functionality
     document.getElementById("searchInput").addEventListener("input", (e) => {
       this.filterData(e.target.value);
+      this.updateClearButton(e.target.value);
     });
 
-    // Sort functionality
-    document.getElementById("sortBtn").addEventListener("click", () => {
-      const column = document.getElementById("sortColumn").value;
-      if (column) {
-        this.sortData(column);
+    // Clear search button
+    document.getElementById("clearSearch").addEventListener("click", () => {
+      this.clearSearch();
+    });
+
+    // Clear search when user clicks on the search box and it's not empty
+    document.getElementById("searchInput").addEventListener("click", (e) => {
+      if (e.target.value && e.target.value.trim() !== "") {
+        // Show a small tooltip or hint that they can clear by clicking again
+        e.target.title = "Click again to clear search";
       }
     });
 
-    // Export CSV
+    // Clear search on double click
+    document.getElementById("searchInput").addEventListener("dblclick", (e) => {
+      this.clearSearch();
+    });
+
+    // Export functionality
     document.getElementById("exportCsv").addEventListener("click", () => {
       this.exportToCSV();
     });
@@ -46,6 +57,28 @@ class KalshiDataExplorer {
       this.hideAnalysis();
     });
 
+    // Analysis tabs
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        // Remove active class from all tabs
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-pane")
+          .forEach((p) => p.classList.remove("active"));
+
+        // Add active class to clicked tab
+        btn.classList.add("active");
+        const tabName = btn.getAttribute("data-tab");
+        document.getElementById(`${tabName}-tab`).classList.add("active");
+
+        // Load tab content
+        this.loadTabContent(tabName);
+      });
+    });
+
+    // Chart loading
     document.getElementById("loadChart").addEventListener("click", () => {
       this.loadSelectedChart();
     });
@@ -133,18 +166,33 @@ class KalshiDataExplorer {
   // Real API call to Flask backend
   async simulateApiCall(params) {
     try {
+      const requestBody = {
+        ticker: params.ticker,
+        limit: 100, // Default limit since form field was removed
+        fetchAll: params.fetchAll === "on",
+      };
+
+      // Only include date parameters if fetchAll is not selected
+      if (!params.fetchAll || params.fetchAll !== "on") {
+        if (params.min_ts) {
+          requestBody.min_ts = params.min_ts;
+        }
+        if (params.max_ts) {
+          requestBody.max_ts = params.max_ts;
+        }
+      }
+
+      // Set limit to maximum when fetchAll is selected
+      if (params.fetchAll === "on") {
+        requestBody.limit = 1000; // Maximum limit for efficiency
+      }
+
       const response = await fetch("/api/trades", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ticker: params.ticker,
-          limit: parseInt(params.limit) || 100,
-          min_ts: params.min_ts,
-          max_ts: params.max_ts,
-          fetchAll: params.fetchAll === "on",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -172,20 +220,50 @@ class KalshiDataExplorer {
       return;
     }
 
-    // Generate headers from first data item
-    const headers = Object.keys(this.filteredData[0]);
-    tableHeader.innerHTML = headers
+    // Define the preferred column order
+    const preferredOrder = [
+      "ticker",
+      "count",
+      "taker_side",
+      "no_price",
+      "yes_price",
+      "created_at",
+      "trade_id",
+    ];
+
+    // Get all available headers from the data
+    const allHeaders = Object.keys(this.filteredData[0]);
+
+    // Create ordered headers: preferred order first, then any remaining headers
+    const orderedHeaders = [];
+
+    // Add headers in preferred order (if they exist in the data)
+    preferredOrder.forEach((header) => {
+      if (allHeaders.includes(header)) {
+        orderedHeaders.push(header);
+      }
+    });
+
+    // Add any remaining headers that weren't in the preferred order
+    allHeaders.forEach((header) => {
+      if (!orderedHeaders.includes(header)) {
+        orderedHeaders.push(header);
+      }
+    });
+
+    // Generate table headers
+    tableHeader.innerHTML = orderedHeaders
       .map(
         (header) =>
           `<th data-column="${header}">${this.formatHeader(header)}</th>`
       )
       .join("");
 
-    // Generate table rows
+    // Generate table rows using the same order
     tableBody.innerHTML = this.filteredData
       .map(
         (row) =>
-          `<tr>${headers
+          `<tr>${orderedHeaders
             .map(
               (header) =>
                 `<td class="${this.getCellClass(header)}">${this.formatCell(
@@ -295,11 +373,41 @@ class KalshiDataExplorer {
       return;
     }
 
-    const headers = Object.keys(this.filteredData[0]);
+    // Define the preferred column order (same as renderTable)
+    const preferredOrder = [
+      "ticker",
+      "count",
+      "taker_side",
+      "no_price",
+      "yes_price",
+      "created_at",
+      "trade_id",
+    ];
+
+    // Get all available headers from the data
+    const allHeaders = Object.keys(this.filteredData[0]);
+
+    // Create ordered headers: preferred order first, then any remaining headers
+    const orderedHeaders = [];
+
+    // Add headers in preferred order (if they exist in the data)
+    preferredOrder.forEach((header) => {
+      if (allHeaders.includes(header)) {
+        orderedHeaders.push(header);
+      }
+    });
+
+    // Add any remaining headers that weren't in the preferred order
+    allHeaders.forEach((header) => {
+      if (!orderedHeaders.includes(header)) {
+        orderedHeaders.push(header);
+      }
+    });
+
     const csvContent = [
-      headers.join(","),
+      orderedHeaders.join(","),
       ...this.filteredData.map((row) =>
-        headers
+        orderedHeaders
           .map((header) => {
             const value = row[header];
             // Escape commas and quotes in CSV
@@ -692,6 +800,27 @@ class KalshiDataExplorer {
     const chartDisplay = document.getElementById("chartDisplay");
     chartDisplay.innerHTML =
       "<div class='placeholder'>Select a chart type and click 'Load Chart' to view</div>";
+  }
+
+  updateClearButton(value) {
+    const clearButton = document.getElementById("clearSearch");
+    const searchInput = document.getElementById("searchInput");
+
+    if (value && value.trim() !== "") {
+      clearButton.classList.add("visible");
+      searchInput.value = value; // Ensure the input value is set
+    } else {
+      clearButton.classList.remove("visible");
+      searchInput.value = ""; // Clear the input value
+      searchInput.title = ""; // Clear the tooltip
+    }
+  }
+
+  clearSearch() {
+    const searchInput = document.getElementById("searchInput");
+    searchInput.value = "";
+    this.filterData("");
+    this.updateClearButton("");
   }
 }
 
