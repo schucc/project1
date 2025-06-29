@@ -1,10 +1,8 @@
-# Private keys and sensitive files
+# Private key files (security)
 *.key
 *.pem
-*.p12
-*.pfx
-kalshi-key-*.key
-kalshi-key-pkcs8.key
+*.p8
+kalshi-key*
 
 # Environment variables
 .env
@@ -55,4 +53,14 @@ venv.bak/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Data files
+*.csv
+*.json
+trades_data.*
+*.log
+
+# Temporary files
+*.tmp
+*.temp 

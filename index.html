@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kalshi API Data Explorer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Kalshi API Data Explorer</h1>
+        <p>Fetch, explore, and analyze trades data from Kalshi API</p>
+      </header>
+
+      <div class="form-section">
+        <form id="apiForm">
+          <div class="form-group">
+            <label for="ticker">Ticker:</label>
+            <input
+              type="text"
+              id="ticker"
+              name="ticker"
+              placeholder="e.g., LEAVEPOWELL-25-DEC31"
+              value="LEAVEPOWELL-25-DEC31"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="limit">Entries per page (1-1000):</label>
+            <input
+              type="number"
+              id="limit"
+              name="limit"
+              min="1"
+              max="1000"
+              value="100"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="dateFrom">Date From:</label>
+            <input type="datetime-local" id="dateFrom" name="dateFrom" />
+          </div>
+
+          <div class="form-group">
+            <label for="dateTo">Date To:</label>
+            <input type="datetime-local" id="dateTo" name="dateTo" />
+          </div>
+
+          <div class="form-group">
+            <label for="fetchAll">Fetch all data (ignore limit):</label>
+            <input type="checkbox" id="fetchAll" name="fetchAll" />
+          </div>
+
+          <button type="submit" id="fetchBtn">Fetch Data</button>
+        </form>
+      </div>
+
+      <div class="controls-section">
+        <div class="search-filter">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search in any column..."
+          />
+          <select id="sortColumn">
+            <option value="">Sort by...</option>
+            <option value="timestamp">Timestamp</option>
+            <option value="price">Price</option>
+            <option value="quantity">Quantity</option>
+            <option value="side">Side</option>
+          </select>
+          <button id="sortBtn">Sort</button>
+          <button id="exportCsv">Export CSV</button>
+          <button id="analyzeBtn">Analyze Data</button>
+        </div>
+      </div>
+
+      <div class="loading" id="loading" style="display: none">
+        <div class="spinner"></div>
+        <p>Fetching data...</p>
+      </div>
+
+      <!-- Analysis Section -->
+      <div class="analysis-section" id="analysisSection" style="display: none">
+        <div class="analysis-header">
+          <h2>Data Analysis</h2>
+          <button id="closeAnalysis">×</button>
+        </div>
+
+        <div class="analysis-tabs">
+          <button class="tab-btn active" data-tab="stats">Statistics</button>
+          <button class="tab-btn" data-tab="metrics">Advanced Metrics</button>
+          <button class="tab-btn" data-tab="charts">Charts</button>
+          <button class="tab-btn" data-tab="all">All Analysis</button>
+        </div>
+
+        <div class="tab-content">
+          <!-- Statistics Tab -->
+          <div id="stats-tab" class="tab-pane active">
+            <div class="stats-grid" id="statsGrid">
+              <!-- Stats will be populated here -->
+            </div>
+          </div>
+
+          <!-- Advanced Metrics Tab -->
+          <div id="metrics-tab" class="tab-pane">
+            <div class="metrics-grid" id="metricsGrid">
+              <!-- Metrics will be populated here -->
+            </div>
+          </div>
+
+          <!-- Charts Tab -->
+          <div id="charts-tab" class="tab-pane">
+            <div class="charts-container">
+              <div class="chart-controls">
+                <select id="chartSelect">
+                  <option value="price">Price Movement</option>
+                  <option value="volume">Volume Analysis</option>
+                  <option value="side_analysis">Buy/Sell Analysis</option>
+                  <option value="heatmap">Trading Heatmap</option>
+                  <option value="price_distribution">Price Distribution</option>
+                  <option value="time_series">Time Series Analysis</option>
+                </select>
+                <button id="loadChart">Load Chart</button>
+              </div>
+              <div class="chart-display" id="chartDisplay">
+                <!-- Charts will be displayed here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- All Analysis Tab -->
+          <div id="all-tab" class="tab-pane">
+            <div class="all-analysis-container">
+              <div class="loading" id="analysisLoading" style="display: none">
+                <div class="spinner"></div>
+                <p>Generating analysis...</p>
+              </div>
+              <div id="allAnalysisContent">
+                <!-- All analysis content will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <div class="results-info">
+          <span id="resultCount">No data loaded</span>
+          <span id="resultTime"></span>
+        </div>
+
+        <div class="table-container">
+          <table id="dataTable">
+            <thead>
+              <tr id="tableHeader">
+                <!-- Headers will be populated dynamically -->
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Data will be populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
