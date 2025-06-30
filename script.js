@@ -828,9 +828,7 @@ class KalshiDataExplorer {
               ([key, value]) => `
             <div class="stat-card">
               <h3>${key.replace(/_/g, " ").toUpperCase()}</h3>
-              <div class="value">${
-                typeof value === "number" ? value.toLocaleString() : value
-              }</div>
+              <div class="value">${this.formatStatValue(key, value)}</div>
             </div>
           `
             )
@@ -889,6 +887,68 @@ class KalshiDataExplorer {
     `;
 
     container.innerHTML = html;
+  }
+
+  formatStatValue(key, value) {
+    // Handle different types of statistics
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+
+    // Handle date range
+    if (key === "date_range") {
+      if (typeof value === "object" && value.start && value.end) {
+        const startDate = new Date(value.start).toLocaleString();
+        const endDate = new Date(value.end).toLocaleString();
+        return `Start: ${startDate}<br>End: ${endDate}`;
+      }
+      return "N/A";
+    }
+
+    // Handle price stats objects
+    if (key.includes("_price_stats") || key.includes("_stats")) {
+      if (typeof value === "object") {
+        const stats = [];
+        for (const [statKey, statValue] of Object.entries(value)) {
+          if (typeof statValue === "number") {
+            stats.push(`${statKey}: ${statValue.toFixed(2)}`);
+          }
+        }
+        return stats.join("<br>");
+      }
+      return "N/A";
+    }
+
+    // Handle distributions (ticker_distribution, taker_side_distribution)
+    if (key.includes("_distribution")) {
+      if (typeof value === "object") {
+        const items = [];
+        for (const [itemKey, itemValue] of Object.entries(value)) {
+          items.push(`${itemKey}: ${itemValue}`);
+        }
+        return (
+          items.slice(0, 5).join("<br>") + (items.length > 5 ? "<br>..." : "")
+        );
+      }
+      return "N/A";
+    }
+
+    // Handle simple numbers
+    if (typeof value === "number") {
+      return value.toLocaleString();
+    }
+
+    // Handle strings
+    if (typeof value === "string") {
+      return value;
+    }
+
+    // Handle other objects
+    if (typeof value === "object") {
+      return JSON.stringify(value, null, 2);
+    }
+
+    return String(value);
   }
 
   showChartPlaceholder() {
