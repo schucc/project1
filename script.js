@@ -729,47 +729,52 @@ class KalshiDataExplorer {
     const metricCards = [
       {
         title: "Price Volatility",
-        value: metrics.price_volatility?.toFixed(4),
+        value: this.formatMetricValue(metrics.price_volatility, 4),
         unit: "",
       },
       {
         title: "Price Skewness",
-        value: metrics.price_skewness?.toFixed(4),
+        value: this.formatMetricValue(metrics.price_skewness, 4),
         unit: "",
       },
       {
         title: "Price Kurtosis",
-        value: metrics.price_kurtosis?.toFixed(4),
+        value: this.formatMetricValue(metrics.price_kurtosis, 4),
         unit: "",
       },
       {
         title: "Average Trade Size",
-        value: metrics.avg_trade_size?.toFixed(2),
+        value: this.formatMetricValue(metrics.avg_trade_size, 2),
         unit: "units",
       },
       {
         title: "Largest Trade",
-        value: metrics.largest_trade?.toLocaleString(),
+        value: this.formatMetricValue(metrics.largest_trade, 0, true),
         unit: "units",
       },
       {
         title: "VWAP",
-        value: `$${metrics.volume_weighted_avg_price?.toFixed(2)}`,
+        value: this.formatMetricValue(
+          metrics.volume_weighted_avg_price,
+          2,
+          false,
+          "$"
+        ),
         unit: "",
       },
       {
         title: "Buy/Sell Ratio",
-        value: metrics.buy_sell_ratio?.toFixed(2),
+        value: this.formatMetricValue(metrics.buy_sell_ratio, 2),
         unit: "",
       },
       {
         title: "Price Spread",
-        value: `$${metrics.price_spread?.toFixed(2)}`,
+        value: this.formatMetricValue(metrics.price_spread, 2, false, "$"),
         unit: "",
       },
       {
         title: "Trading Intensity",
-        value: metrics.trading_intensity?.toFixed(2),
+        value: this.formatMetricValue(metrics.trading_intensity, 2),
         unit: "trades/hour",
       },
     ];
@@ -779,13 +784,36 @@ class KalshiDataExplorer {
         (card) => `
       <div class="metric-card">
         <h3>${card.title}</h3>
-        <div class="value">${card.value || "N/A"}<span class="unit">${
-          card.unit
-        }</span></div>
+        <div class="value">${card.value}<span class="unit">${card.unit}</span></div>
       </div>
     `
       )
       .join("");
+  }
+
+  formatMetricValue(value, decimals = 2, useLocaleString = false, prefix = "") {
+    // Handle null, undefined, NaN, or empty values
+    if (value === null || value === undefined || value === "" || isNaN(value)) {
+      return "N/A";
+    }
+
+    // Convert to number if it's a string
+    const numValue = typeof value === "string" ? parseFloat(value) : value;
+
+    // Check if it's a valid number
+    if (isNaN(numValue)) {
+      return "N/A";
+    }
+
+    // Format the value
+    let formattedValue;
+    if (useLocaleString) {
+      formattedValue = numValue.toLocaleString();
+    } else {
+      formattedValue = numValue.toFixed(decimals);
+    }
+
+    return prefix + formattedValue;
   }
 
   displayAllAnalysis(analysis) {

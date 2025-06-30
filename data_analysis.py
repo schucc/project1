@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime, timedelta
@@ -147,29 +149,33 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'created_time' not in self.df.columns or 'yes_price' not in self.df.columns:
+            return None
+            
         plt.figure(figsize=(12, 6))
         
         if chart_type == 'line':
             # Line chart of price over time
-            plt.plot(self.df['timestamp'], self.df['price'], alpha=0.7)
-            plt.title('Price Movement Over Time')
+            plt.plot(self.df['created_time'], self.df['yes_price'], alpha=0.7)
+            plt.title('Yes Price Movement Over Time')
             plt.xlabel('Time')
-            plt.ylabel('Price ($)')
+            plt.ylabel('Yes Price ($)')
             plt.xticks(rotation=45)
             
         elif chart_type == 'candlestick':
             # Simplified candlestick-like chart
-            df_grouped = self.df.groupby(self.df['timestamp'].dt.date).agg({
-                'price': ['min', 'max', 'first', 'last'],
-                'quantity': 'sum'
+            df_grouped = self.df.groupby(self.df['created_time'].dt.date).agg({
+                'yes_price': ['min', 'max', 'first', 'last'],
+                'count': 'sum'
             }).reset_index()
             
             for _, row in df_grouped.iterrows():
-                date = row['timestamp']
-                low = row[('price', 'min')]
-                high = row[('price', 'max')]
-                open_price = row[('price', 'first')]
-                close_price = row[('price', 'last')]
+                date = row['created_time']
+                low = row[('yes_price', 'min')]
+                high = row[('yes_price', 'max')]
+                open_price = row[('yes_price', 'first')]
+                close_price = row[('yes_price', 'last')]
                 
                 # Draw candlestick
                 color = 'green' if close_price >= open_price else 'red'
@@ -184,21 +190,27 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'created_time' not in self.df.columns or 'count' not in self.df.columns:
+            return None
+            
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         
         # Volume over time
-        volume_by_time = self.df.groupby(self.df['timestamp'].dt.date)['quantity'].sum()
+        volume_by_time = self.df.groupby(self.df['created_time'].dt.date)['count'].sum()
         ax1.bar(volume_by_time.index, volume_by_time.values, alpha=0.7)
         ax1.set_title('Trading Volume by Date')
         ax1.set_ylabel('Volume')
         ax1.tick_params(axis='x', rotation=45)
         
         # Volume by hour
-        volume_by_hour = self.df.groupby('hour')['quantity'].sum()
-        ax2.bar(volume_by_hour.index, volume_by_hour.values, alpha=0.7)
-        ax2.set_title('Trading Volume by Hour of Day')
-        ax2.set_xlabel('Hour')
-        ax2.set_ylabel('Volume')
+        if 'created_time' in self.df.columns:
+            self.df['hour'] = self.df['created_time'].dt.hour
+            volume_by_hour = self.df.groupby('hour')['count'].sum()
+            ax2.bar(volume_by_hour.index, volume_by_hour.values, alpha=0.7)
+            ax2.set_title('Trading Volume by Hour of Day')
+            ax2.set_xlabel('Hour')
+            ax2.set_ylabel('Volume')
         
         plt.tight_layout()
         return self._save_chart()
@@ -208,22 +220,26 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'taker_side' not in self.df.columns or 'yes_price' not in self.df.columns or 'count' not in self.df.columns:
+            return None
+            
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         
         # Buy vs Sell count
-        side_counts = self.df['side'].value_counts()
+        side_counts = self.df['taker_side'].value_counts()
         ax1.pie(side_counts.values, labels=side_counts.index, autopct='%1.1f%%')
         ax1.set_title('Buy vs Sell Distribution')
         
         # Buy vs Sell volume
-        side_volume = self.df.groupby('side')['quantity'].sum()
+        side_volume = self.df.groupby('taker_side')['count'].sum()
         ax2.bar(side_volume.index, side_volume.values, color=['green', 'red'])
         ax2.set_title('Buy vs Sell Volume')
         ax2.set_ylabel('Volume')
         
         # Price distribution by side
-        buy_prices = self.df[self.df['side'] == 'buy']['price']
-        sell_prices = self.df[self.df['side'] == 'sell']['price']
+        buy_prices = self.df[self.df['taker_side'] == 'buy']['yes_price']
+        sell_prices = self.df[self.df['taker_side'] == 'sell']['yes_price']
         
         ax3.hist(buy_prices, alpha=0.7, label='Buy', color='green', bins=20)
         ax3.hist(sell_prices, alpha=0.7, label='Sell', color='red', bins=20)
@@ -233,7 +249,7 @@ class TradingDataAnalyzer:
         ax3.legend()
         
         # Average price by side
-        avg_price_by_side = self.df.groupby('side')['price'].mean()
+        avg_price_by_side = self.df.groupby('taker_side')['yes_price'].mean()
         ax4.bar(avg_price_by_side.index, avg_price_by_side.values, color=['green', 'red'])
         ax4.set_title('Average Price by Side')
         ax4.set_ylabel('Average Price ($)')
@@ -246,12 +262,16 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'created_time' not in self.df.columns or 'count' not in self.df.columns:
+            return None
+            
         # Create pivot table for heatmap
         df_copy = self.df.copy()
-        df_copy['hour'] = df_copy['timestamp'].dt.hour
-        df_copy['day'] = df_copy['timestamp'].dt.day_name()
+        df_copy['hour'] = df_copy['created_time'].dt.hour
+        df_copy['day'] = df_copy['created_time'].dt.day_name()
         
-        heatmap_data = df_copy.groupby(['day', 'hour'])['quantity'].sum().unstack(fill_value=0)
+        heatmap_data = df_copy.groupby(['day', 'hour'])['count'].sum().unstack(fill_value=0)
         
         plt.figure(figsize=(12, 8))
         sns.heatmap(heatmap_data, annot=True, fmt='.0f', cmap='YlOrRd')
@@ -266,21 +286,25 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'yes_price' not in self.df.columns:
+            return None
+            
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
         
         # Price histogram
-        ax1.hist(self.df['price'], bins=30, alpha=0.7, edgecolor='black')
-        ax1.set_title('Price Distribution')
-        ax1.set_xlabel('Price ($)')
+        ax1.hist(self.df['yes_price'], bins=30, alpha=0.7, edgecolor='black')
+        ax1.set_title('Yes Price Distribution')
+        ax1.set_xlabel('Yes Price ($)')
         ax1.set_ylabel('Frequency')
-        ax1.axvline(self.df['price'].mean(), color='red', linestyle='--', label=f'Mean: ${self.df["price"].mean():.2f}')
-        ax1.axvline(self.df['price'].median(), color='green', linestyle='--', label=f'Median: ${self.df["price"].median():.2f}')
+        ax1.axvline(self.df['yes_price'].mean(), color='red', linestyle='--', label=f'Mean: ${self.df["yes_price"].mean():.2f}')
+        ax1.axvline(self.df['yes_price'].median(), color='green', linestyle='--', label=f'Median: ${self.df["yes_price"].median():.2f}')
         ax1.legend()
         
         # Price box plot
-        ax2.boxplot(self.df['price'])
-        ax2.set_title('Price Box Plot')
-        ax2.set_ylabel('Price ($)')
+        ax2.boxplot(self.df['yes_price'])
+        ax2.set_title('Yes Price Box Plot')
+        ax2.set_ylabel('Yes Price ($)')
         
         plt.tight_layout()
         return self._save_chart()
@@ -290,22 +314,26 @@ class TradingDataAnalyzer:
         if self.df.empty:
             return None
             
+        # Check if required columns exist
+        if 'created_time' not in self.df.columns or 'yes_price' not in self.df.columns or 'count' not in self.df.columns:
+            return None
+            
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         
         # Price over time with trend
-        df_sorted = self.df.sort_values('timestamp')
-        ax1.plot(df_sorted['timestamp'], df_sorted['price'], alpha=0.7)
+        df_sorted = self.df.sort_values('created_time')
+        ax1.plot(df_sorted['created_time'], df_sorted['yes_price'], alpha=0.7)
         
         # Add trend line
-        z = np.polyfit(range(len(df_sorted)), df_sorted['price'], 1)
+        z = np.polyfit(range(len(df_sorted)), df_sorted['yes_price'], 1)
         p = np.poly1d(z)
-        ax1.plot(df_sorted['timestamp'], p(range(len(df_sorted))), "r--", alpha=0.8)
-        ax1.set_title('Price Trend Analysis')
-        ax1.set_ylabel('Price ($)')
+        ax1.plot(df_sorted['created_time'], p(range(len(df_sorted))), "r--", alpha=0.8)
+        ax1.set_title('Yes Price Trend Analysis')
+        ax1.set_ylabel('Yes Price ($)')
         ax1.tick_params(axis='x', rotation=45)
         
         # Volume over time
-        volume_time = df_sorted.groupby(df_sorted['timestamp'].dt.date)['quantity'].sum()
+        volume_time = df_sorted.groupby(df_sorted['created_time'].dt.date)['count'].sum()
         ax2.plot(volume_time.index, volume_time.values)
         ax2.set_title('Volume Trend')
         ax2.set_ylabel('Volume')
@@ -313,14 +341,14 @@ class TradingDataAnalyzer:
         
         # Price volatility (rolling standard deviation)
         if len(df_sorted) > 10:
-            rolling_std = df_sorted['price'].rolling(window=10).std()
-            ax3.plot(df_sorted['timestamp'], rolling_std)
-            ax3.set_title('Price Volatility (10-period rolling std)')
+            rolling_std = df_sorted['yes_price'].rolling(window=10).std()
+            ax3.plot(df_sorted['created_time'], rolling_std)
+            ax3.set_title('Yes Price Volatility (10-period rolling std)')
             ax3.set_ylabel('Standard Deviation')
             ax3.tick_params(axis='x', rotation=45)
         
         # Trade frequency over time
-        trade_freq = df_sorted.groupby(df_sorted['timestamp'].dt.date).size()
+        trade_freq = df_sorted.groupby(df_sorted['created_time'].dt.date).size()
         ax4.plot(trade_freq.index, trade_freq.values)
         ax4.set_title('Trade Frequency')
         ax4.set_ylabel('Number of Trades')
@@ -337,63 +365,117 @@ class TradingDataAnalyzer:
         try:
             metrics = {}
             
-            # Time-based analysis
-            if 'created_time' in self.df.columns:
-                self.df['hour'] = self.df['created_time'].dt.hour
-                self.df['day_of_week'] = self.df['created_time'].dt.day_name()
-                
-                metrics['hourly_distribution'] = self.df['hour'].value_counts().sort_index().to_dict()
-                metrics['daily_distribution'] = self.df['day_of_week'].value_counts().to_dict()
-            
             # Price analysis if available
             if 'yes_price' in self.df.columns and 'no_price' in self.df.columns:
                 yes_prices = pd.to_numeric(self.df['yes_price'], errors='coerce')
                 no_prices = pd.to_numeric(self.df['no_price'], errors='coerce')
-                spread = yes_prices - no_prices
                 
-                # Price correlations
-                metrics['price_correlation'] = yes_prices.corr(no_prices)
+                # Remove NaN values for calculations
+                yes_prices_clean = yes_prices.dropna()
+                no_prices_clean = no_prices.dropna()
                 
-                # Volatility metrics
-                metrics['yes_price_volatility'] = yes_prices.std()
-                metrics['no_price_volatility'] = no_prices.std()
-                metrics['spread_volatility'] = spread.std()
+                if len(yes_prices_clean) > 0:
+                    # Price volatility (standard deviation)
+                    metrics['price_volatility'] = float(yes_prices_clean.std())
+                    
+                    # Price skewness
+                    metrics['price_skewness'] = float(yes_prices_clean.skew())
+                    
+                    # Price kurtosis
+                    metrics['price_kurtosis'] = float(yes_prices_clean.kurtosis())
+                    
+                    # Price spread (difference between yes and no prices)
+                    if len(no_prices_clean) > 0:
+                        spread = yes_prices_clean - no_prices_clean
+                        metrics['price_spread'] = float(spread.mean())
                 
-                # Price ranges
-                metrics['yes_price_range'] = {
-                    'min': yes_prices.min(),
-                    'max': yes_prices.max(),
-                    'range': yes_prices.max() - yes_prices.min()
-                }
-                metrics['no_price_range'] = {
-                    'min': no_prices.min(),
-                    'max': no_prices.max(),
-                    'range': no_prices.max() - no_prices.min()
-                }
-                metrics['spread_range'] = {
-                    'min': spread.min(),
-                    'max': spread.max(),
-                    'range': spread.max() - spread.min()
-                }
+                # Volume weighted average price (VWAP)
+                if 'count' in self.df.columns:
+                    count = pd.to_numeric(self.df['count'], errors='coerce')
+                    vwap_numerator = (yes_prices * count).sum()
+                    vwap_denominator = count.sum()
+                    if vwap_denominator > 0:
+                        metrics['volume_weighted_avg_price'] = float(vwap_numerator / vwap_denominator)
+                    else:
+                        metrics['volume_weighted_avg_price'] = 0.0
+                else:
+                    metrics['volume_weighted_avg_price'] = 0.0
             
-            # Ticker analysis
-            if 'ticker' in self.df.columns:
-                ticker_counts = self.df['ticker'].value_counts()
-                metrics['most_active_tickers'] = ticker_counts.head(5).to_dict()
-                metrics['ticker_diversity'] = len(ticker_counts)
+            # Trade size analysis
+            if 'count' in self.df.columns:
+                count = pd.to_numeric(self.df['count'], errors='coerce')
+                count_clean = count.dropna()
+                
+                if len(count_clean) > 0:
+                    metrics['avg_trade_size'] = float(count_clean.mean())
+                    metrics['largest_trade'] = float(count_clean.max())
+                else:
+                    metrics['avg_trade_size'] = 0.0
+                    metrics['largest_trade'] = 0.0
+            else:
+                metrics['avg_trade_size'] = 0.0
+                metrics['largest_trade'] = 0.0
             
-            # Taker side analysis
+            # Trading intensity (trades per hour)
+            if 'created_time' in self.df.columns:
+                # Calculate total hours in the dataset
+                time_range = self.df['created_time'].max() - self.df['created_time'].min()
+                total_hours = time_range.total_seconds() / 3600
+                
+                if total_hours > 0:
+                    metrics['trading_intensity'] = float(len(self.df) / total_hours)
+                else:
+                    metrics['trading_intensity'] = 0.0
+            else:
+                metrics['trading_intensity'] = 0.0
+            
+            # Taker side analysis for buy/sell ratio
             if 'taker_side' in self.df.columns:
                 side_counts = self.df['taker_side'].value_counts()
-                metrics['taker_side_balance'] = side_counts.to_dict()
-                if len(side_counts) == 2:
-                    metrics['buy_sell_ratio'] = side_counts.iloc[0] / side_counts.iloc[1]
+                if len(side_counts) >= 2:
+                    # Calculate ratio of first side to second side
+                    metrics['buy_sell_ratio'] = float(side_counts.iloc[0] / side_counts.iloc[1])
+                else:
+                    metrics['buy_sell_ratio'] = 1.0  # Default to 1 if only one side
+            else:
+                metrics['buy_sell_ratio'] = 1.0
+            
+            # Set default values for any missing metrics
+            default_metrics = {
+                'price_volatility': 0.0,
+                'price_skewness': 0.0,
+                'price_kurtosis': 0.0,
+                'avg_trade_size': 0.0,
+                'largest_trade': 0.0,
+                'volume_weighted_avg_price': 0.0,
+                'buy_sell_ratio': 1.0,
+                'price_spread': 0.0,
+                'trading_intensity': 0.0
+            }
+            
+            # Ensure all expected metrics are present
+            for key, default_value in default_metrics.items():
+                if key not in metrics:
+                    metrics[key] = default_value
             
             # Convert NumPy types to native Python types
             return self._convert_numpy_types(metrics)
             
         except Exception as e:
-            return {"error": f"Error calculating advanced metrics: {str(e)}"}
+            print(f"Error in get_advanced_metrics: {e}")
+            # Return default values on error
+            return {
+                'price_volatility': 0.0,
+                'price_skewness': 0.0,
+                'price_kurtosis': 0.0,
+                'avg_trade_size': 0.0,
+                'largest_trade': 0.0,
+                'volume_weighted_avg_price': 0.0,
+                'buy_sell_ratio': 1.0,
+                'price_spread': 0.0,
+                'trading_intensity': 0.0,
+                'error': f"Error calculating advanced metrics: {str(e)}"
+            }
     
     def _save_chart(self):
         """Save matplotlib chart to base64 string"""
