@@ -13,17 +13,52 @@
         <p>Fetch, explore, and analyze trades data from Kalshi API</p>
       </header>
 
+      <!-- Series Browser Section -->
+      <div class="form-section" id="seriesBrowserSection">
+        <h3>Browse Series by Category</h3>
+        <div id="categoriesList" class="categories-list">
+          <!-- Categories will be loaded here -->
+        </div>
+        <div
+          id="seriesList"
+          class="series-list"
+          style="display: none; margin-top: 20px"
+        >
+          <h4 id="seriesListTitle"></h4>
+          <ul id="seriesItems"></ul>
+          <button id="backToCategories" style="margin-top: 10px; display: none">
+            Back to Categories
+          </button>
+        </div>
+        <div
+          id="tickersList"
+          class="tickers-list"
+          style="display: none; margin-top: 20px"
+        >
+          <h4 id="tickersListTitle"></h4>
+          <ul id="tickerItems"></ul>
+          <button id="backToSeries" style="margin-top: 10px">
+            Back to Series
+          </button>
+        </div>
+      </div>
+
       <div class="form-section">
         <form id="apiForm">
           <div class="form-group">
+            <label for="eventTicker">Event Ticker:</label>
+            <select id="eventTicker" name="eventTicker" disabled>
+              <option value="">Select an event ticker...</option>
+            </select>
+            <small>Choose an event to see available tickers</small>
+          </div>
+
+          <div class="form-group">
             <label for="ticker">Ticker:</label>
-            <input
-              type="text"
-              id="ticker"
-              name="ticker"
-              placeholder="e.g., LEAVEPOWELL-25-DEC31"
-              value="LEAVEPOWELL-25-DEC31"
-            />
+            <select id="ticker" name="ticker" disabled>
+              <option value="">Select a ticker...</option>
+            </select>
+            <small>Choose a specific ticker for this event</small>
           </div>
 
           <div class="form-group">

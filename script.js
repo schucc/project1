@@ -10,9 +10,15 @@ class KalshiDataExplorer {
     this.bindEvents();
     this.setupDateDefaults();
     this.setupAnalysisTabs();
+    this.loadCategories(); // Load categories for series browser on page load
   }
 
   bindEvents() {
+    // Event ticker dropdown change
+    document.getElementById("eventTicker").addEventListener("change", (e) => {
+      this.onEventTickerChange(e.target.value);
+    });
+
     // Form submission
     document.getElementById("apiForm").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -57,6 +63,28 @@ class KalshiDataExplorer {
       this.hideAnalysis();
     });
 
+    // Back button functionality
+    document
+      .getElementById("backToCategories")
+      .addEventListener("click", () => {
+        const seriesList = document.getElementById("seriesList");
+        const tickersList = document.getElementById("tickersList");
+        const categoriesList = document.getElementById("categoriesList");
+
+        seriesList.style.display = "none";
+        tickersList.style.display = "none";
+        categoriesList.style.display = "block";
+        this.loadCategories();
+      });
+
+    document.getElementById("backToSeries").addEventListener("click", () => {
+      const tickersList = document.getElementById("tickersList");
+      const seriesList = document.getElementById("seriesList");
+
+      tickersList.style.display = "none";
+      seriesList.style.display = "block";
+    });
+
     // Analysis tabs
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -89,6 +117,29 @@ class KalshiDataExplorer {
         const column = e.target.dataset.column;
         if (column) {
           this.sortData(column);
+        }
+      }
+    });
+
+    // Series row clicks (event delegation)
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".series-row")) {
+        const row = e.target.closest(".series-row");
+        const ticker = row.dataset.ticker;
+        const title = row.dataset.title;
+        if (ticker && title) {
+          this.loadTickersForSeries(ticker, title);
+        }
+      }
+    });
+
+    // Ticker row clicks (event delegation)
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".ticker-row")) {
+        const row = e.target.closest(".ticker-row");
+        const ticker = row.querySelector(".ticker-name").textContent;
+        if (ticker) {
+          this.selectTickerForTrades(ticker);
         }
       }
     });
@@ -133,6 +184,17 @@ class KalshiDataExplorer {
   async fetchData() {
     const formData = new FormData(document.getElementById("apiForm"));
     const params = Object.fromEntries(formData);
+
+    console.log("fetchData called with params:", params);
+
+    // Validate that a ticker is selected
+    if (!params.ticker || params.ticker.trim() === "") {
+      console.log("Validation failed: no ticker selected");
+      this.showError("Please select a ticker from the dropdown");
+      return;
+    }
+
+    console.log("Validation passed, ticker:", params.ticker);
 
     // Convert dates to timestamps
     if (params.dateFrom) {
@@ -187,6 +249,8 @@ class KalshiDataExplorer {
         requestBody.limit = 1000; // Maximum limit for efficiency
       }
 
+      console.log("API request body:", requestBody);
+
       const response = await fetch("/api/trades", {
         method: "POST",
         headers: {
@@ -200,6 +264,7 @@ class KalshiDataExplorer {
       }
 
       const result = await response.json();
+      console.log("API response:", result);
       return result;
     } catch (error) {
       console.error("API call failed:", error);
@@ -821,6 +886,323 @@ class KalshiDataExplorer {
     searchInput.value = "";
     this.filterData("");
     this.updateClearButton("");
+  }
+
+  async onEventTickerChange(eventTicker) {
+    const tickerSelect = document.getElementById("ticker");
+
+    if (!eventTicker) {
+      // Reset ticker dropdown if no event selected
+      tickerSelect.innerHTML = '<option value="">Select a ticker...</option>';
+      tickerSelect.disabled = true;
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/markets/events/${encodeURIComponent(eventTicker)}/tickers`
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        // Populate ticker dropdown
+        tickerSelect.innerHTML = '<option value="">Select a ticker...</option>';
+        result.data.tickers.forEach((ticker) => {
+          const option = document.createElement("option");
+          option.value = ticker;
+          option.textContent = ticker;
+          tickerSelect.appendChild(option);
+        });
+
+        // Enable ticker dropdown
+        tickerSelect.disabled = false;
+
+        console.log(
+          `Loaded ${result.data.count} tickers for event: ${eventTicker}`
+        );
+      } else {
+        this.showError(result.error);
+      }
+    } catch (error) {
+      this.showError("Failed to load tickers: " + error.message);
+    }
+  }
+
+  showMessage(message, type = "info") {
+    // Create a temporary message element
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${type}`;
+    messageDiv.textContent = message;
+    messageDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      z-index: 1000;
+      ${
+        type === "success"
+          ? "background-color: #4CAF50;"
+          : "background-color: #2196F3;"
+      }
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      if (messageDiv.parentNode) {
+        messageDiv.parentNode.removeChild(messageDiv);
+      }
+    }, 3000);
+  }
+
+  async loadCategories() {
+    const categoriesList = document.getElementById("categoriesList");
+    const seriesList = document.getElementById("seriesList");
+    const seriesItems = document.getElementById("seriesItems");
+    const seriesListTitle = document.getElementById("seriesListTitle");
+    const backToCategories = document.getElementById("backToCategories");
+
+    categoriesList.innerHTML = "<div>Loading categories...</div>";
+    seriesList.style.display = "none";
+    backToCategories.style.display = "none";
+
+    try {
+      const response = await fetch("/api/series/categories");
+      const result = await response.json();
+      if (result.success) {
+        const categories = result.data;
+        categoriesList.innerHTML = "";
+        categories.forEach((cat) => {
+          const btn = document.createElement("button");
+          btn.className = "category-btn";
+          btn.textContent = cat;
+          btn.onclick = () => this.loadSeriesForCategory(cat);
+          categoriesList.appendChild(btn);
+        });
+      } else {
+        categoriesList.innerHTML = `<div class='error'>${result.error}</div>`;
+      }
+    } catch (error) {
+      categoriesList.innerHTML = `<div class='error'>Failed to load categories: ${error.message}</div>`;
+    }
+  }
+
+  async loadSeriesForCategory(category) {
+    try {
+      this.showMessage("Loading series...", "info");
+
+      const response = await fetch(
+        `/api/series/category/${encodeURIComponent(category)}`
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        const seriesList = document.getElementById("seriesList");
+        const seriesListTitle = document.getElementById("seriesListTitle");
+        const seriesItems = document.getElementById("seriesItems");
+        const categoriesList = document.getElementById("categoriesList");
+        const backToCategories = document.getElementById("backToCategories");
+
+        seriesListTitle.textContent = `Series in ${category}`;
+
+        // Create table structure for series with available data
+        let seriesHtml = `
+          <div class="series-table-container">
+            <table class="series-table">
+              <thead>
+                <tr>
+                  <th>Series Ticker</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Frequency</th>
+                  <th>Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        result.data.forEach((series) => {
+          const ticker = series.ticker || "N/A";
+          const title = series.title || "N/A";
+          const seriesCategory = series.category || "N/A";
+          const frequency = series.frequency || "N/A";
+          const tags = series.tags ? series.tags.join(", ") : "N/A";
+
+          seriesHtml += `
+            <tr class="series-row" data-ticker="${ticker}" data-title="${title.replace(
+            /"/g,
+            "&quot;"
+          )}">
+              <td class="series-ticker">${ticker}</td>
+              <td class="series-title">${title}</td>
+              <td class="series-category">${seriesCategory}</td>
+              <td class="series-frequency">${frequency}</td>
+              <td class="series-tags">${tags}</td>
+            </tr>
+          `;
+        });
+
+        seriesHtml += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        seriesItems.innerHTML = seriesHtml;
+
+        categoriesList.style.display = "none";
+        seriesList.style.display = "block";
+        backToCategories.style.display = "block";
+
+        this.showMessage(
+          `Found ${result.data.length} series in ${category}`,
+          "success"
+        );
+      } else {
+        this.showMessage(`Error loading series: ${result.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Error loading series:", error);
+      this.showMessage("Failed to load series", "error");
+    }
+  }
+
+  async loadTickersForSeries(seriesTicker, seriesTitle) {
+    try {
+      this.showMessage("Loading tickers...", "info");
+
+      const response = await fetch(`/api/series/${seriesTicker}/tickers`);
+      const result = await response.json();
+
+      if (result.success) {
+        const tickersList = document.getElementById("tickersList");
+        const tickersListTitle = document.getElementById("tickersListTitle");
+        const tickerItems = document.getElementById("tickerItems");
+        const seriesList = document.getElementById("seriesList");
+
+        tickersListTitle.textContent = `Tickers for ${seriesTitle}`;
+
+        // Create table structure for tickers with metadata
+        let tickersHtml = `
+          <div class="tickers-table-container">
+            <table class="tickers-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Status</th>
+                  <th>Volume</th>
+                  <th>Last Price</th>
+                  <th>Open Time</th>
+                  <th>Close Time</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        result.data.tickers.forEach((ticker) => {
+          // Find the market data for this ticker
+          const market = result.data.markets.find((m) => m.ticker === ticker);
+
+          if (market) {
+            const status = market.status || "Unknown";
+            const volume = market.volume || 0;
+            const lastPrice = market.last_price || "N/A";
+            const closeTime = market.close_time
+              ? new Date(market.close_time * 1000).toLocaleString()
+              : "N/A";
+            const openTime = market.open_time
+              ? new Date(market.open_time * 1000).toLocaleString()
+              : "N/A";
+
+            tickersHtml += `
+              <tr class="ticker-row" data-ticker="${ticker}">
+                <td class="ticker-name">${ticker}</td>
+                <td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>
+                <td class="ticker-volume">${volume.toLocaleString()}</td>
+                <td class="ticker-price">${lastPrice}</td>
+                <td class="ticker-time">${openTime}</td>
+                <td class="ticker-time">${closeTime}</td>
+              </tr>
+            `;
+          } else {
+            // Fallback if no market data available
+            tickersHtml += `
+              <tr class="ticker-row" data-ticker="${ticker}">
+                <td class="ticker-name">${ticker}</td>
+                <td><span class="status-badge status-unknown">Unknown</span></td>
+                <td class="ticker-volume">N/A</td>
+                <td class="ticker-price">N/A</td>
+                <td class="ticker-time">N/A</td>
+                <td class="ticker-time">N/A</td>
+              </tr>
+            `;
+          }
+        });
+
+        tickersHtml += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        tickerItems.innerHTML = tickersHtml;
+
+        seriesList.style.display = "none";
+        tickersList.style.display = "block";
+
+        this.showMessage(
+          `Found ${result.data.tickers.length} tickers for ${seriesTitle}`,
+          "success"
+        );
+      } else {
+        this.showMessage(`Error loading tickers: ${result.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Error loading tickers:", error);
+      this.showMessage("Failed to load tickers", "error");
+    }
+  }
+
+  selectTickerForTrades(ticker) {
+    console.log("selectTickerForTrades called with:", ticker);
+
+    // Extract event ticker from the ticker (e.g., "CORIVER-2024-T1075" -> "CORIVER-2024")
+    const eventTicker = ticker.split("-").slice(0, -1).join("-");
+    console.log("Extracted event ticker:", eventTicker);
+
+    // Populate the event ticker field
+    const eventTickerSelect = document.getElementById("eventTicker");
+    eventTickerSelect.innerHTML = `<option value="${eventTicker}">${eventTicker}</option>`;
+    eventTickerSelect.value = eventTicker;
+    eventTickerSelect.disabled = false;
+    console.log("Event ticker field populated:", eventTickerSelect.value);
+
+    // Populate the ticker field in the trades form
+    const tickerSelect = document.getElementById("ticker");
+    tickerSelect.innerHTML = `<option value="${ticker}">${ticker}</option>`;
+    tickerSelect.value = ticker;
+    tickerSelect.disabled = false;
+    console.log("Ticker field populated:", tickerSelect.value);
+
+    // Scroll to the trades form
+    document.getElementById("apiForm").scrollIntoView({ behavior: "smooth" });
+
+    // Show a success message
+    this.showMessage(
+      `Selected ticker: ${ticker}. You can now fetch trades data.`,
+      "success"
+    );
+
+    // Hide the tickers list and go back to categories
+    const tickersList = document.getElementById("tickersList");
+    const categoriesList = document.getElementById("categoriesList");
+    tickersList.style.display = "none";
+    categoriesList.style.display = "block";
+    this.loadCategories();
   }
 }
 

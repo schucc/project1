@@ -2,13 +2,17 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 from kalshi_api_client import get_all_trades
+from markets_api import get_all_markets, organize_markets_by_event, get_unique_event_tickers, get_markets_for_event_ticker
 from data_analysis import TradingDataAnalyzer
+from series_api import get_all_categories, get_series_by_category
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Global variable to store current data
 current_trades_data = []
+current_markets_data = []
+organized_markets_data = {}
 
 # Serve static files (HTML, CSS, JS)
 @app.route('/')
@@ -67,6 +71,109 @@ def fetch_trades():
         
     except Exception as e:
         print(f"Error fetching trades: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# API endpoint to fetch all markets data
+@app.route('/api/markets', methods=['GET', 'POST'])
+def fetch_markets():
+    global current_markets_data, organized_markets_data
+    try:
+        print("Fetching markets from Kalshi API...")
+        
+        # Get filter parameters from request
+        filters = {}
+        if request.method == 'POST':
+            filters = request.get_json() or {}
+            print(f"Using filters: {filters}")
+        
+        # Call the markets API client with filters
+        markets = get_all_markets(**filters)
+        
+        # Store data globally
+        current_markets_data = markets
+        organized_markets_data = organize_markets_by_event(markets)
+        
+        # Get unique event tickers
+        event_tickers = get_unique_event_tickers(markets)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'markets': markets,
+                'event_tickers': event_tickers,
+                'organized_markets': organized_markets_data,
+                'total_markets': len(markets),
+                'total_events': len(event_tickers)
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error fetching markets: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# API endpoint to get event tickers
+@app.route('/api/markets/events', methods=['GET'])
+def get_events():
+    global current_markets_data
+    try:
+        if not current_markets_data:
+            return jsonify({
+                'success': False,
+                'error': 'No markets data available. Please fetch markets first.'
+            }), 400
+        
+        event_tickers = get_unique_event_tickers(current_markets_data)
+        
+        return jsonify({
+            'success': True,
+            'data': event_tickers
+        })
+        
+    except Exception as e:
+        print(f"Error getting events: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# API endpoint to get tickers for a specific event
+@app.route('/api/markets/events/<event_ticker>/tickers', methods=['GET'])
+def get_tickers_for_event(event_ticker):
+    global current_markets_data, organized_markets_data
+    try:
+        if not current_markets_data:
+            return jsonify({
+                'success': False,
+                'error': 'No markets data available. Please fetch markets first.'
+            }), 400
+        
+        if event_ticker in organized_markets_data:
+            markets_for_event = organized_markets_data[event_ticker]
+            tickers = [market.get('ticker') for market in markets_for_event]
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'event_ticker': event_ticker,
+                    'tickers': tickers,
+                    'markets': markets_for_event,
+                    'count': len(tickers)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Event ticker "{event_ticker}" not found'
+            }), 404
+        
+    except Exception as e:
+        print(f"Error getting tickers for event {event_ticker}: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -200,6 +307,47 @@ def get_all_analyses():
             'success': False,
             'error': str(e)
         }), 500
+
+# API endpoint to get all series categories
+@app.route('/api/series/categories', methods=['GET'])
+def api_get_series_categories():
+    try:
+        categories = get_all_categories()
+        return jsonify({'success': True, 'data': categories})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API endpoint to get all series for a given category
+@app.route('/api/series/category/<category>', methods=['GET'])
+def api_get_series_by_category(category):
+    try:
+        series = get_series_by_category(category)
+        return jsonify({'success': True, 'data': series})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API endpoint to get markets/tickers for a specific series
+@app.route('/api/series/<series_ticker>/tickers', methods=['GET'])
+def api_get_tickers_for_series(series_ticker):
+    try:
+        # Use the markets API to get markets filtered by series_ticker
+        # Don't filter by status so we get all markets (active, finalized, etc.)
+        markets = get_all_markets(series_ticker=series_ticker, status=None)
+        
+        # Extract tickers from markets
+        tickers = [market.get('ticker') for market in markets if market.get('ticker')]
+        
+        return jsonify({
+            'success': True, 
+            'data': {
+                'series_ticker': series_ticker,
+                'tickers': tickers,
+                'markets': markets,
+                'count': len(tickers)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("Starting Kalshi API Web Server...")
