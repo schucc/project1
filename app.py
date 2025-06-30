@@ -330,12 +330,23 @@ def api_get_series_by_category(category):
 @app.route('/api/series/<series_ticker>/tickers', methods=['GET'])
 def api_get_tickers_for_series(series_ticker):
     try:
+        print(f"Fetching tickers for series: {series_ticker}")
+        
         # Use the markets API to get markets filtered by series_ticker
         # Don't filter by status so we get all markets (active, finalized, etc.)
         markets = get_all_markets(series_ticker=series_ticker, status=None)
         
+        print(f"Found {len(markets)} markets for series {series_ticker}")
+        
+        # Log the first market to see its structure
+        if markets:
+            print(f"First market structure: {markets[0]}")
+            print(f"Available fields: {list(markets[0].keys())}")
+        
         # Extract tickers from markets
         tickers = [market.get('ticker') for market in markets if market.get('ticker')]
+        
+        print(f"Extracted {len(tickers)} tickers: {tickers[:5]}...")  # Show first 5
         
         return jsonify({
             'success': True, 
@@ -347,6 +358,7 @@ def api_get_tickers_for_series(series_ticker):
             }
         })
     except Exception as e:
+        print(f"Error in api_get_tickers_for_series: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':

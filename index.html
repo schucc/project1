@@ -45,38 +45,83 @@
 
       <div class="form-section">
         <form id="apiForm">
-          <div class="form-group">
-            <label for="eventTicker">Event Ticker:</label>
-            <select id="eventTicker" name="eventTicker" disabled>
-              <option value="">Select an event ticker...</option>
-            </select>
-            <small>Choose an event to see available tickers</small>
+          <!-- Ticker Info Section -->
+          <div
+            id="tickerInfoSection"
+            class="ticker-info-section"
+            style="display: none"
+          >
+            <h4>Selected Ticker Information</h4>
+            <div class="ticker-info-grid">
+              <div class="ticker-info-item">
+                <span class="info-label">Category:</span>
+                <span id="tickerCategory" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Series:</span>
+                <span id="tickerSeries" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Status:</span>
+                <span id="tickerStatus" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Volume:</span>
+                <span id="tickerVolume" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Title:</span>
+                <span id="tickerTitle" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Open Time:</span>
+                <span id="tickerOpenTime" class="info-value">-</span>
+              </div>
+              <div class="ticker-info-item">
+                <span class="info-label">Close Time:</span>
+                <span id="tickerCloseTime" class="info-value">-</span>
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="ticker">Ticker:</label>
-            <select id="ticker" name="ticker" disabled>
-              <option value="">Select a ticker...</option>
-            </select>
-            <small>Choose a specific ticker for this event</small>
-          </div>
+          <!-- Form Fields Section -->
+          <div class="form-fields-section">
+            <div class="form-group">
+              <label for="eventTicker">Event Ticker:</label>
+              <select id="eventTicker" name="eventTicker" disabled>
+                <option value="">Select an event ticker...</option>
+              </select>
+              <small>Choose an event to see available tickers</small>
+            </div>
 
-          <div class="form-group">
-            <label for="dateFrom">Date From:</label>
-            <input type="datetime-local" id="dateFrom" name="dateFrom" />
-          </div>
+            <div class="form-group">
+              <label for="ticker">Ticker:</label>
+              <select id="ticker" name="ticker" disabled>
+                <option value="">Select a ticker...</option>
+              </select>
+              <small>Choose a specific ticker for this event</small>
+            </div>
 
-          <div class="form-group">
-            <label for="dateTo">Date To:</label>
-            <input type="datetime-local" id="dateTo" name="dateTo" />
-          </div>
+            <div class="form-group">
+              <label for="dateFrom">Date From:</label>
+              <input type="datetime-local" id="dateFrom" name="dateFrom" />
+            </div>
 
-          <div class="form-group">
-            <label for="fetchAll">Fetch all data (ignore date range):</label>
-            <input type="checkbox" id="fetchAll" name="fetchAll" />
-          </div>
+            <div class="form-group">
+              <label for="dateTo">Date To:</label>
+              <input type="datetime-local" id="dateTo" name="dateTo" />
+            </div>
 
-          <button type="submit" id="fetchBtn">Fetch Data</button>
+            <div class="form-group checkbox-button-group">
+              <div class="checkbox-container">
+                <label for="fetchAll"
+                  >Fetch all data (ignore date range):</label
+                >
+                <input type="checkbox" id="fetchAll" name="fetchAll" />
+              </div>
+              <button type="submit" id="fetchBtn">Fetch Data</button>
+            </div>
+          </div>
         </form>
       </div>
 

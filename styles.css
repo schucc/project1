@@ -869,6 +869,16 @@ tbody tr:nth-child(even) {
   text-align: right;
 }
 
+.ticker-title {
+  font-weight: 500;
+  color: #495057;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
 .series-time,
 .ticker-time {
   font-family: "Courier New", monospace;
@@ -960,4 +970,196 @@ tbody tr:nth-child(even) {
 .detail-item,
 .select-ticker-btn {
   display: none;
+}
+
+/* Series Search Styles */
+.series-search-container {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.series-search-input {
+  flex: 1;
+  min-width: 300px;
+  padding: 10px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.series-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.series-search-input::placeholder {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.series-search-info {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Responsive adjustments for series search */
+@media (max-width: 768px) {
+  .series-search-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .series-search-input {
+    min-width: auto;
+  }
+
+  .series-search-info {
+    text-align: center;
+  }
+}
+
+/* Ticker Info Section Styles */
+.ticker-info-section {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ticker-info-section h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.ticker-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.ticker-info-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ticker-info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #6c757d;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+.info-value.status-active {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.info-value.status-open {
+  color: #007bff;
+  font-weight: 600;
+}
+
+.info-value.status-closed {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.info-value.status-settled {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.info-value.status-unopened {
+  color: #ffc107;
+  font-weight: 600;
+}
+
+/* Form Fields Section */
+.form-fields-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+}
+
+.form-fields-section .form-group {
+  width: 100%;
+  max-width: 600px;
+}
+
+.checkbox-button-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.checkbox-container label {
+  margin: 0;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.checkbox-container input[type="checkbox"] {
+  margin: 0;
+  width: auto;
+}
+
+.checkbox-button-group button {
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+/* Responsive adjustments for ticker info */
+@media (max-width: 768px) {
+  .ticker-info-grid {
+    flex-direction: column;
+  }
+
+  .ticker-info-item {
+    min-width: auto;
+  }
+
+  .ticker-info-section {
+    padding: 15px;
+  }
 }

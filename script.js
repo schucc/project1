@@ -3,6 +3,8 @@ class KalshiDataExplorer {
     this.data = [];
     this.filteredData = [];
     this.currentSort = { column: null, direction: "asc" };
+    this.selectedCategory = null;
+    this.selectedSeries = null;
     this.init();
   }
 
@@ -429,7 +431,7 @@ class KalshiDataExplorer {
     const timeElement = document.getElementById("resultTime");
 
     countElement.textContent = `${this.filteredData.length} records`;
-    timeElement.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+    timeElement.textContent = `Last fetched: ${new Date().toLocaleTimeString()}`;
   }
 
   exportToCSV() {
@@ -993,6 +995,9 @@ class KalshiDataExplorer {
 
   async loadSeriesForCategory(category) {
     try {
+      // Store the selected category
+      this.selectedCategory = category;
+
       this.showMessage("Loading series...", "info");
 
       const response = await fetch(
@@ -1009,8 +1014,14 @@ class KalshiDataExplorer {
 
         seriesListTitle.textContent = `Series in ${category}`;
 
-        // Create table structure for series with available data
+        // Create search input and table structure
         let seriesHtml = `
+          <div class="series-search-container">
+            <input type="text" id="seriesSearchInput" placeholder="Search series by ticker, title, or tags..." class="series-search-input">
+            <div class="series-search-info">
+              <span id="seriesSearchCount">${result.data.length} series</span>
+            </div>
+          </div>
           <div class="series-table-container">
             <table class="series-table">
               <thead>
@@ -1022,7 +1033,7 @@ class KalshiDataExplorer {
                   <th>Tags</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="seriesTableBody">
         `;
 
         result.data.forEach((series) => {
@@ -1034,6 +1045,9 @@ class KalshiDataExplorer {
 
           seriesHtml += `
             <tr class="series-row" data-ticker="${ticker}" data-title="${title.replace(
+            /"/g,
+            "&quot;"
+          )}" data-category="${seriesCategory}" data-frequency="${frequency}" data-tags="${tags.replace(
             /"/g,
             "&quot;"
           )}">
@@ -1054,6 +1068,9 @@ class KalshiDataExplorer {
 
         seriesItems.innerHTML = seriesHtml;
 
+        // Add search functionality
+        this.setupSeriesSearch(result.data);
+
         categoriesList.style.display = "none";
         seriesList.style.display = "block";
         backToCategories.style.display = "block";
@@ -1073,6 +1090,9 @@ class KalshiDataExplorer {
 
   async loadTickersForSeries(seriesTicker, seriesTitle) {
     try {
+      // Store the selected series
+      this.selectedSeries = seriesTitle;
+
       this.showMessage("Loading tickers...", "info");
 
       const response = await fetch(`/api/series/${seriesTicker}/tickers`);
@@ -1095,7 +1115,7 @@ class KalshiDataExplorer {
                   <th>Ticker</th>
                   <th>Status</th>
                   <th>Volume</th>
-                  <th>Last Price</th>
+                  <th>Title</th>
                   <th>Open Time</th>
                   <th>Close Time</th>
                 </tr>
@@ -1110,20 +1130,34 @@ class KalshiDataExplorer {
           if (market) {
             const status = market.status || "Unknown";
             const volume = market.volume || 0;
-            const lastPrice = market.last_price || "N/A";
-            const closeTime = market.close_time
-              ? new Date(market.close_time * 1000).toLocaleString()
-              : "N/A";
-            const openTime = market.open_time
-              ? new Date(market.open_time * 1000).toLocaleString()
-              : "N/A";
+            const title = market.title || "N/A";
+
+            // Handle ISO string timestamps
+            let closeTime = "N/A";
+            let openTime = "N/A";
+
+            if (market.close_time) {
+              try {
+                closeTime = new Date(market.close_time).toLocaleString();
+              } catch (e) {
+                closeTime = "N/A";
+              }
+            }
+
+            if (market.open_time) {
+              try {
+                openTime = new Date(market.open_time).toLocaleString();
+              } catch (e) {
+                openTime = "N/A";
+              }
+            }
 
             tickersHtml += `
               <tr class="ticker-row" data-ticker="${ticker}">
                 <td class="ticker-name">${ticker}</td>
                 <td><span class="status-badge status-${status.toLowerCase()}">${status}</span></td>
                 <td class="ticker-volume">${volume.toLocaleString()}</td>
-                <td class="ticker-price">${lastPrice}</td>
+                <td class="ticker-title">${title}</td>
                 <td class="ticker-time">${openTime}</td>
                 <td class="ticker-time">${closeTime}</td>
               </tr>
@@ -1135,7 +1169,7 @@ class KalshiDataExplorer {
                 <td class="ticker-name">${ticker}</td>
                 <td><span class="status-badge status-unknown">Unknown</span></td>
                 <td class="ticker-volume">N/A</td>
-                <td class="ticker-price">N/A</td>
+                <td class="ticker-title">N/A</td>
                 <td class="ticker-time">N/A</td>
                 <td class="ticker-time">N/A</td>
               </tr>
@@ -1150,6 +1184,9 @@ class KalshiDataExplorer {
         `;
 
         tickerItems.innerHTML = tickersHtml;
+
+        // Store the tickers data for later use
+        this.currentTickersData = result.data.markets;
 
         seriesList.style.display = "none";
         tickersList.style.display = "block";
@@ -1188,6 +1225,9 @@ class KalshiDataExplorer {
     tickerSelect.disabled = false;
     console.log("Ticker field populated:", tickerSelect.value);
 
+    // Fetch and display ticker metadata
+    this.fetchTickerMetadata(ticker);
+
     // Scroll to the trades form
     document.getElementById("apiForm").scrollIntoView({ behavior: "smooth" });
 
@@ -1203,6 +1243,148 @@ class KalshiDataExplorer {
     tickersList.style.display = "none";
     categoriesList.style.display = "block";
     this.loadCategories();
+  }
+
+  async fetchTickerMetadata(ticker) {
+    try {
+      // Find the market data for this ticker from the current tickers data
+      // We'll need to store this data when loading tickers
+      if (this.currentTickersData) {
+        const market = this.currentTickersData.find((m) => m.ticker === ticker);
+        if (market) {
+          this.displayTickerMetadata(market);
+          return;
+        }
+      }
+
+      // If we don't have the data, fetch it from the API
+      const response = await fetch(
+        `/api/series/${ticker.split("-").slice(0, -1).join("-")}/tickers`
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        const market = result.data.markets.find((m) => m.ticker === ticker);
+        if (market) {
+          this.displayTickerMetadata(market);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching ticker metadata:", error);
+    }
+  }
+
+  displayTickerMetadata(market) {
+    const tickerInfoSection = document.getElementById("tickerInfoSection");
+    const tickerCategory = document.getElementById("tickerCategory");
+    const tickerSeries = document.getElementById("tickerSeries");
+    const tickerStatus = document.getElementById("tickerStatus");
+    const tickerVolume = document.getElementById("tickerVolume");
+    const tickerTitle = document.getElementById("tickerTitle");
+    const tickerOpenTime = document.getElementById("tickerOpenTime");
+    const tickerCloseTime = document.getElementById("tickerCloseTime");
+
+    // Show the section
+    tickerInfoSection.style.display = "block";
+
+    // Populate category and series data
+    tickerCategory.textContent = this.selectedCategory || "N/A";
+    tickerSeries.textContent = this.selectedSeries || "N/A";
+
+    // Populate the market data
+    const status = market.status || "Unknown";
+    const volume = market.volume || 0;
+    const title = market.title || "N/A";
+
+    // Handle timestamps
+    let openTime = "N/A";
+    let closeTime = "N/A";
+
+    if (market.open_time) {
+      try {
+        openTime = new Date(market.open_time).toLocaleString();
+      } catch (e) {
+        openTime = "N/A";
+      }
+    }
+
+    if (market.close_time) {
+      try {
+        closeTime = new Date(market.close_time).toLocaleString();
+      } catch (e) {
+        closeTime = "N/A";
+      }
+    }
+
+    // Update the display
+    tickerStatus.textContent = status;
+    tickerStatus.className = `info-value status-${status.toLowerCase()}`;
+    tickerVolume.textContent = volume.toLocaleString();
+    tickerTitle.textContent = title;
+    tickerOpenTime.textContent = openTime;
+    tickerCloseTime.textContent = closeTime;
+  }
+
+  setupSeriesSearch(seriesData) {
+    const searchInput = document.getElementById("seriesSearchInput");
+    const searchCount = document.getElementById("seriesSearchCount");
+    const tableBody = document.getElementById("seriesTableBody");
+
+    if (!searchInput) return;
+
+    // Store original data for filtering
+    this.currentSeriesData = seriesData;
+
+    searchInput.addEventListener("input", (e) => {
+      const searchTerm = e.target.value.toLowerCase().trim();
+      this.filterSeriesTable(searchTerm, searchCount, tableBody);
+    });
+
+    // Clear search when input is cleared
+    searchInput.addEventListener("keyup", (e) => {
+      if (e.key === "Escape") {
+        searchInput.value = "";
+        this.filterSeriesTable("", searchCount, tableBody);
+      }
+    });
+  }
+
+  filterSeriesTable(searchTerm, searchCount, tableBody) {
+    const rows = tableBody.querySelectorAll(".series-row");
+    let visibleCount = 0;
+
+    rows.forEach((row) => {
+      const ticker = row.dataset.ticker.toLowerCase();
+      const title = row.dataset.title.toLowerCase();
+      const category = row.dataset.category.toLowerCase();
+      const frequency = row.dataset.frequency.toLowerCase();
+      const tags = row.dataset.tags.toLowerCase();
+
+      // Check if any field contains the search term
+      const matches =
+        ticker.includes(searchTerm) ||
+        title.includes(searchTerm) ||
+        category.includes(searchTerm) ||
+        frequency.includes(searchTerm) ||
+        tags.includes(searchTerm);
+
+      if (matches || !searchTerm) {
+        row.style.display = "";
+        visibleCount++;
+      } else {
+        row.style.display = "none";
+      }
+    });
+
+    // Update the count display
+    if (searchCount) {
+      const totalCount = this.currentSeriesData.length;
+      if (searchTerm) {
+        searchCount.textContent = `${visibleCount} of ${totalCount} series`;
+      } else {
+        searchCount.textContent = `${totalCount} series`;
+      }
+    }
   }
 }
 
